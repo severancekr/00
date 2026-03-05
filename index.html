@@ -24,23 +24,28 @@
     .btn-secondary { background-color: #8e8e93; width: 100%; } 
     
     .content-area { padding: 10px; padding-bottom: 40px; }
+    
     .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
     
     .card { background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #eaeaea; display: flex; flex-direction: column; overflow: hidden; cursor: pointer; }
-    .card:active { background-color: #f1f3f5; } /* 클릭 시 피드백 */
+    .card:active { background-color: #f1f3f5; }
 
     .post-title { font-size: 0.75rem; color: #000000; background-color: #e0f7fa; width: 100%; padding: 4px 0; font-weight: 900; text-align: center; border-bottom: 1px solid #ddd; letter-spacing: -0.5px; }
+    
+    .card.special-visit { grid-column: span 3; background-color: #ffffff; border: 1px solid #ffcdd2; } 
+    .card.special-visit .post-title { background-color: #ffebee; color: #d32f2f; border-bottom: 1px solid #ffcdd2; } 
+    .card.special-visit .worker-name { font-size: 1.05rem; color: #1c1c1e; padding: 8px 0; } 
+
     .worker-name { font-size: 0.95rem; font-weight: 800; color: #1c1c1e; width: 100%; text-align: center; padding: 6px 0; }
 
-    /* [신규] 상세 일과 팝업(모달) 스타일 */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
-    .modal-content { background-color: #fff; padding: 20px; border-radius: 12px; width: 80%; max-width: 300px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-    .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #e0f7fa; padding-bottom: 10px; text-align: center; color: #007aff; }
-    .schedule-list { list-style: none; padding: 0; margin: 0; }
-    .schedule-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 14px; }
-    .schedule-time { font-weight: bold; color: #666; width: 50px; }
-    .schedule-task { color: #333; flex: 1; text-align: right; }
-    .close-btn { margin-top: 15px; width: 100%; background-color: #6c757d; padding: 10px; border-radius: 6px; color: white; border: none; font-weight: bold; }
+    .modal-content { background-color: #fff; padding: 15px; border-radius: 12px; width: 60%; max-width: 200px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); } 
+    .modal-header { font-size: 15px; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #e0f7fa; padding-bottom: 8px; text-align: center; color: #007aff; }
+    .schedule-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; }
+    .schedule-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 13px; }
+    .schedule-time { font-weight: bold; color: #666; width: 45px; }
+    .schedule-task { color: #333; flex: 1; text-align: right; font-weight: 500; }
+    .close-btn { margin-top: 12px; width: 100%; background-color: #6c757d; padding: 10px; border-radius: 8px; color: white; border: none; font-weight: bold; font-size: 14px; }
 
     .monthly-result-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; text-align: center; color: #34c759; padding-top: 10px; }
     .monthly-list { display: flex; flex-direction: column; gap: 5px; }
@@ -59,18 +64,7 @@
   <div id="scheduleModal" class="modal">
     <div class="modal-content">
       <div id="modalTitle" class="modal-header">근무자 상세 일정</div>
-      <div class="schedule-list">
-        <div class="schedule-item"><span class="schedule-time">08시</span><span class="schedule-task">조회</span></div>
-        <div class="schedule-item"><span class="schedule-time">09시</span><span class="schedule-task">수술</span></div>
-        <div class="schedule-item"><span class="schedule-time">10시</span><span class="schedule-task">순찰</span></div>
-        <div class="schedule-item"><span class="schedule-time">11시</span><span class="schedule-task">정신</span></div>
-        <div class="schedule-item"><span class="schedule-time">12시</span><span class="schedule-task">정신/수술</span></div>
-        <div class="schedule-item"><span class="schedule-time">13시</span><span class="schedule-task">식사</span></div>
-        <div class="schedule-item"><span class="schedule-time">14시</span><span class="schedule-task">수술</span></div>
-        <div class="schedule-item"><span class="schedule-time">15시</span><span class="schedule-task">라운딩</span></div>
-        <div class="schedule-item"><span class="schedule-time">16시</span><span class="schedule-task">정신</span></div>
-        <div class="schedule-item"><span class="schedule-time">17시</span><span class="schedule-task">석회</span></div>
-      </div>
+      <div id="modalBody" class="schedule-list"></div>
       <button class="close-btn" onclick="closeModal()">닫기</button>
     </div>
   </div>
@@ -117,6 +111,8 @@
     const modal = document.getElementById('scheduleModal');
 
     const daysArr = ['일', '월', '화', '수', '목', '금', '토'];
+
+    // 요일 업데이트 함수
     function updateDayOfWeek() {
       if(datePicker.value) {
         const d = new Date(datePicker.value);
@@ -126,16 +122,45 @@
       }
     }
 
-    datePicker.valueAsDate = new Date();
-    updateDayOfWeek();
+    // [요청사항 반영] 페이지 로드 시 한국 시간 기준 당일 날짜 자동 세팅
+    function setTodayDate() {
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      const today = new Date(now.getTime() - offset).toISOString().split('T')[0];
+      datePicker.value = today;
+      updateDayOfWeek();
+    }
+
+    // 초기 실행
+    setTodayDate();
     datePicker.addEventListener('change', updateDayOfWeek);
 
-    // [신규] 팝업 열기/닫기 함수
+    function getScheduleByPost(post) {
+      const schedules = {
+        "응급실A": ["08시:조회", "09시:수술", "10시:순찰", "11시:정신", "12시:정신/수술", "13시:식사", "14시:수술", "15시:라운딩", "16시:정신", "17시:석회"],
+        "3층A": ["08시:출근", "09시:병동순회", "10시:순찰", "11시:보고", "12시:식사", "13시:병동순회", "14시:면회객통제", "15시:순찰", "16시:병동순회", "17시:퇴근준비"],
+        "면회": ["08시:조회", "09시:면회실준비", "10시:면회접수", "11시:면회안내", "12시:교대식사", "13시:면회접수", "14시:면회안내", "15시:순찰", "16시:정리", "17시:마감"],
+        "기본": ["08시:조회", "09시:일반근무", "10시:순찰", "11시:일반근무", "12시:식사", "13시:일반근무", "14시:순찰", "15시:라운딩", "16시:일반근무", "17시:석회"]
+      };
+      return schedules[post] || schedules["기본"];
+    }
+
     function openModal(name, post) {
-      if(name === '미정' || !name) return; // 이름이 없을 땐 안 열림
+      if(name === '미정' || !name) return;
       document.getElementById('modalTitle').innerText = `${name} (${post})`;
+      const modalBody = document.getElementById('modalBody');
+      modalBody.innerHTML = '';
+      const daySchedule = getScheduleByPost(post);
+      daySchedule.forEach(item => {
+        const [time, task] = item.split(':');
+        const row = document.createElement('div');
+        row.className = 'schedule-item';
+        row.innerHTML = `<span class="schedule-time">${time}</span><span class="schedule-task">${task}</span>`;
+        modalBody.appendChild(row);
+      });
       modal.style.display = 'flex';
     }
+
     function closeModal() { modal.style.display = 'none'; }
     window.onclick = function(event) { if (event.target == modal) closeModal(); }
 
@@ -156,8 +181,8 @@
 
     async function searchByName() {
       const dateVal = datePicker.value;
-      if(!dateVal) { alert('검색할 월이 포함된 날짜를 달력에서 선택해주세요.'); return; }
-      const workerName = prompt("검색하실 조원의 이름을 정확히 입력해주세요.");
+      if(!dateVal) { alert('날짜를 선택해주세요.'); return; }
+      const workerName = prompt("이름을 입력하세요.");
       if(!workerName) return;
       const monthVal = dateVal.substring(0, 7); 
       showStatus('loading');
@@ -178,7 +203,7 @@
       data.forEach(item => {
         const card = document.createElement('div');
         card.className = 'card';
-        // [요청 2] 클릭 이벤트 추가
+        if (item.post === '면회') { card.classList.add('special-visit'); }
         card.onclick = () => openModal(item.name, item.post);
         card.innerHTML = `<div class="post-title">${item.post}</div>
                           <div class="worker-name">${item.name}</div>`;
@@ -207,11 +232,10 @@
     function saveAsImage() {
       const captureArea = document.getElementById('captureArea');
       const todayText = datePicker.value;
-      alert('이미지 생성 중입니다. 잠시만 기다려주세요.');
+      alert('이미지를 생성합니다.');
       html2canvas(captureArea, { scale: 2, backgroundColor: "#f8f9fa" }).then(canvas => {
-        const image = canvas.toDataURL("image/png");
         const link = document.createElement('a');
-        link.href = image;
+        link.href = canvas.toDataURL("image/png");
         link.download = `신촌_근무스케줄_${todayText}.png`;
         link.click();
       });
