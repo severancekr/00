@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>신촌 당일 스케줄</title>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; background-color: #f8f9fa; margin: 0; padding: 0; color: #333; -webkit-text-size-adjust: none; }
+    
+    .header-container { position: sticky; top: 0; background-color: #ffffff; padding: 8px 15px; box-shadow: 0 1px 5px rgba(0,0,0,0.05); z-index: 100; border-bottom: 1px solid #eee; }
+    h2 { margin: 0 0 8px 0; font-size: 17px; text-align: center; color: #1c1c1e; }
+    
+    .search-box { display: flex; gap: 6px; }
+    .date-wrapper { flex: 1.2; display: flex; align-items: center; border: 1px solid #ddd; border-radius: 6px; background-color: #fdfdfd; padding-right: 8px; }
+    input[type="date"] { flex: 1; padding: 8px; font-size: 15px; border: none; background: transparent; outline: none; }
+    #dayOfWeek { font-size: 14px; font-weight: bold; color: #007aff; pointer-events: none; }
+
+    .btn-group { flex: 1; display: flex; gap: 4px; }
+    button { padding: 8px 12px; font-size: 14px; font-weight: bold; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+    
+    .btn-primary { background-color: #007aff; } 
+    .btn-success { background-color: #34c759; } 
+    .btn-secondary { background-color: #8e8e93; width: 100%; } 
+    
+    .content-area { padding: 10px; padding-bottom: 40px; }
+    .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    
+    .card { background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #eaeaea; display: flex; flex-direction: column; overflow: hidden; cursor: pointer; }
+    .card:active { background-color: #f1f3f5; } /* 클릭 시 피드백 */
+
+    .post-title { font-size: 0.75rem; color: #000000; background-color: #e0f7fa; width: 100%; padding: 4px 0; font-weight: 900; text-align: center; border-bottom: 1px solid #ddd; letter-spacing: -0.5px; }
+    .worker-name { font-size: 0.95rem; font-weight: 800; color: #1c1c1e; width: 100%; text-align: center; padding: 6px 0; }
+
+    /* [신규] 상세 일과 팝업(모달) 스타일 */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+    .modal-content { background-color: #fff; padding: 20px; border-radius: 12px; width: 80%; max-width: 300px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #e0f7fa; padding-bottom: 10px; text-align: center; color: #007aff; }
+    .schedule-list { list-style: none; padding: 0; margin: 0; }
+    .schedule-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 14px; }
+    .schedule-time { font-weight: bold; color: #666; width: 50px; }
+    .schedule-task { color: #333; flex: 1; text-align: right; }
+    .close-btn { margin-top: 15px; width: 100%; background-color: #6c757d; padding: 10px; border-radius: 6px; color: white; border: none; font-weight: bold; }
+
+    .monthly-result-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; text-align: center; color: #34c759; padding-top: 10px; }
+    .monthly-list { display: flex; flex-direction: column; gap: 5px; }
+    .monthly-item { background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
+    .monthly-date { font-weight: bold; color: #007aff; background: #e3f2fd; padding: 2px 6px; border-radius: 4px; }
+    .monthly-post { font-weight: 600; color: #1c1c1e; text-align: right; }
+
+    #loading, #no-data { display: none; text-align: center; margin-top: 30px; font-size: 15px; font-weight: bold; }
+    #loading { color: #007aff; }
+    #no-data { color: #ff3b30; }
+    .action-bar { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  </style>
+</head>
+<body>
+
+  <div id="scheduleModal" class="modal">
+    <div class="modal-content">
+      <div id="modalTitle" class="modal-header">근무자 상세 일정</div>
+      <div class="schedule-list">
+        <div class="schedule-item"><span class="schedule-time">08시</span><span class="schedule-task">조회</span></div>
+        <div class="schedule-item"><span class="schedule-time">09시</span><span class="schedule-task">수술</span></div>
+        <div class="schedule-item"><span class="schedule-time">10시</span><span class="schedule-task">순찰</span></div>
+        <div class="schedule-item"><span class="schedule-time">11시</span><span class="schedule-task">정신</span></div>
+        <div class="schedule-item"><span class="schedule-time">12시</span><span class="schedule-task">정신/수술</span></div>
+        <div class="schedule-item"><span class="schedule-time">13시</span><span class="schedule-task">식사</span></div>
+        <div class="schedule-item"><span class="schedule-time">14시</span><span class="schedule-task">수술</span></div>
+        <div class="schedule-item"><span class="schedule-time">15시</span><span class="schedule-task">라운딩</span></div>
+        <div class="schedule-item"><span class="schedule-time">16시</span><span class="schedule-task">정신</span></div>
+        <div class="schedule-item"><span class="schedule-time">17시</span><span class="schedule-task">석회</span></div>
+      </div>
+      <button class="close-btn" onclick="closeModal()">닫기</button>
+    </div>
+  </div>
+
+  <div class="header-container">
+    <h2>📋 신촌 당일 스케줄</h2>
+    <div class="search-box">
+      <div class="date-wrapper">
+        <input type="date" id="datePicker">
+        <span id="dayOfWeek"></span>
+      </div>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="searchSchedule()">조회</button>
+        <button class="btn-success" onclick="searchByName()">개별검색</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <div id="loading">데이터 불러오는 중... ⏳</div>
+    <div id="no-data">등록된 스케줄이 없습니다.</div>
+    
+    <div id="captureArea">
+      <div class="grid-container" id="scheduleGrid"></div>
+      <div id="monthlyView"></div>
+    </div>
+
+    <div class="action-bar">
+      <div id="actionBarContent" style="display: none; width: 100%; max-width: 300px; margin-bottom: 15px;">
+        <button class="btn-secondary" onclick="saveAsImage()">📸 스케줄 이미지로 저장</button>
+      </div>
+      <button class="btn-secondary" style="background-color: #6c757d; max-width: 300px;" onclick="history.back()">⬅ 이전 화면으로</button>
+    </div>
+  </div>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbx-8JovQcFelf8UqRnCj_7Lt2unIuelrlKY1gAVqYy0f2AjSjhhIKy0udka2m4Yw5jC/exec';
+
+    const datePicker = document.getElementById('datePicker');
+    const dayOfWeek = document.getElementById('dayOfWeek');
+    const scheduleGrid = document.getElementById('scheduleGrid');
+    const monthlyView = document.getElementById('monthlyView');
+    const actionBarContent = document.getElementById('actionBarContent');
+    const modal = document.getElementById('scheduleModal');
+
+    const daysArr = ['일', '월', '화', '수', '목', '금', '토'];
+    function updateDayOfWeek() {
+      if(datePicker.value) {
+        const d = new Date(datePicker.value);
+        dayOfWeek.innerText = `(${daysArr[d.getDay()]})`;
+      } else {
+        dayOfWeek.innerText = '';
+      }
+    }
+
+    datePicker.valueAsDate = new Date();
+    updateDayOfWeek();
+    datePicker.addEventListener('change', updateDayOfWeek);
+
+    // [신규] 팝업 열기/닫기 함수
+    function openModal(name, post) {
+      if(name === '미정' || !name) return; // 이름이 없을 땐 안 열림
+      document.getElementById('modalTitle').innerText = `${name} (${post})`;
+      modal.style.display = 'flex';
+    }
+    function closeModal() { modal.style.display = 'none'; }
+    window.onclick = function(event) { if (event.target == modal) closeModal(); }
+
+    async function searchSchedule() {
+      const dateVal = datePicker.value;
+      if(!dateVal) { alert('조회하실 날짜를 선택해주세요.'); return; }
+      showStatus('loading');
+      clearViews();
+      try {
+        const response = await fetch(`${GAS_URL}?mode=daily&date=${dateVal}`);
+        const result = await response.json();
+        displayDailyData(result.data);
+      } catch (error) {
+        console.error("통신 에러:", error);
+        hideStatus();
+      }
+    }
+
+    async function searchByName() {
+      const dateVal = datePicker.value;
+      if(!dateVal) { alert('검색할 월이 포함된 날짜를 달력에서 선택해주세요.'); return; }
+      const workerName = prompt("검색하실 조원의 이름을 정확히 입력해주세요.");
+      if(!workerName) return;
+      const monthVal = dateVal.substring(0, 7); 
+      showStatus('loading');
+      clearViews();
+      try {
+        const response = await fetch(`${GAS_URL}?mode=monthly&name=${workerName}&month=${monthVal}`);
+        const result = await response.json();
+        displayMonthlyData(result.data, workerName, monthVal);
+      } catch (error) {
+        console.error("통신 에러:", error);
+        hideStatus();
+      }
+    }
+
+    function displayDailyData(data) {
+      hideStatus();
+      if (!data || data.length === 0) { showStatus('no-data'); return; }
+      data.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        // [요청 2] 클릭 이벤트 추가
+        card.onclick = () => openModal(item.name, item.post);
+        card.innerHTML = `<div class="post-title">${item.post}</div>
+                          <div class="worker-name">${item.name}</div>`;
+        scheduleGrid.appendChild(card);
+      });
+      actionBarContent.style.display = 'block'; 
+    }
+
+    function displayMonthlyData(data, workerName, monthVal) {
+      hideStatus();
+      if (!data || data.length === 0) { showStatus('no-data'); return; }
+      const monthNumber = parseInt(monthVal.split('-')[1], 10);
+      monthlyView.innerHTML = `<div class="monthly-result-title">[${workerName}]님 ${monthNumber}월 한달 근무 현황</div>
+                               <div class="monthly-list"></div>`;
+      const listContainer = monthlyView.querySelector('.monthly-list');
+      data.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'monthly-item';
+        row.innerHTML = `<span class="monthly-date">${item.date}일</span>
+                         <span class="monthly-post">${item.posts}</span>`;
+        listContainer.appendChild(row);
+      });
+      actionBarContent.style.display = 'block'; 
+    }
+
+    function saveAsImage() {
+      const captureArea = document.getElementById('captureArea');
+      const todayText = datePicker.value;
+      alert('이미지 생성 중입니다. 잠시만 기다려주세요.');
+      html2canvas(captureArea, { scale: 2, backgroundColor: "#f8f9fa" }).then(canvas => {
+        const image = canvas.toDataURL("image/png");
+        const link = document.createElement('a');
+        link.href = image;
+        link.download = `신촌_근무스케줄_${todayText}.png`;
+        link.click();
+      });
+    }
+
+    function clearViews() { scheduleGrid.innerHTML = ''; monthlyView.innerHTML = ''; actionBarContent.style.display = 'none'; }
+    function showStatus(id) { document.getElementById(id).style.display = 'block'; }
+    function hideStatus() { document.getElementById('loading').style.display = 'none'; document.getElementById('no-data').style.display = 'none'; }
+  </script>
+</body>
+</html>
